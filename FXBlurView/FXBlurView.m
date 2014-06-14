@@ -54,11 +54,11 @@
 {
     //image must be nonzero size
     if (floorf(self.size.width) * floorf(self.size.height) <= 0.0f) return self;
-    
+
     //boxsize must be an odd integer
     uint32_t boxSize = (uint32_t)(radius * self.scale);
     if (boxSize % 2 == 0) boxSize ++;
-    
+
     //create image buffers
     CGImageRef imageRef = self.CGImage;
     vImage_Buffer buffer1, buffer2;
@@ -68,44 +68,43 @@
     size_t bytes = buffer1.rowBytes * buffer1.height;
     buffer1.data = malloc(bytes);
     buffer2.data = malloc(bytes);
-    
+
     //create temp buffer
     void *tempBuffer = malloc((size_t)vImageBoxConvolve_ARGB8888(&buffer1, &buffer2, NULL, 0, 0, boxSize, boxSize,
                                                                  NULL, kvImageEdgeExtend + kvImageGetTempBufferSize));
-    
+
     //copy image data
     CFDataRef dataSource = CGDataProviderCopyData(CGImageGetDataProvider(imageRef));
     memcpy(buffer1.data, CFDataGetBytePtr(dataSource), bytes);
     CFRelease(dataSource);
-    
+
     for (NSUInteger i = 0; i < iterations; i++)
     {
         //perform blur
         vImageBoxConvolve_ARGB8888(&buffer1, &buffer2, tempBuffer, 0, 0, boxSize, boxSize, NULL, kvImageEdgeExtend);
-        
+
         //swap buffers
         void *temp = buffer1.data;
         buffer1.data = buffer2.data;
         buffer2.data = temp;
     }
-    
+
     //free buffers
     free(buffer2.data);
     free(tempBuffer);
-    
+
     //create image context from buffer
     CGContextRef ctx = CGBitmapContextCreate(buffer1.data, buffer1.width, buffer1.height,
                                              8, buffer1.rowBytes, CGImageGetColorSpace(imageRef),
                                              CGImageGetBitmapInfo(imageRef));
-    
+
     //apply tint
     if (tintColor && CGColorGetAlpha(tintColor.CGColor) > 0.0f)
     {
         CGContextSetFillColorWithColor(ctx, [tintColor colorWithAlphaComponent:0.25].CGColor);
-        CGContextSetBlendMode(ctx, kCGBlendModePlusLighter);
         CGContextFillRect(ctx, CGRectMake(0, 0, buffer1.width, buffer1.height));
     }
-    
+
     //create image from context
     imageRef = CGBitmapContextCreateImage(ctx);
     UIImage *image = [UIImage imageWithCGImage:imageRef scale:self.scale orientation:self.imageOrientation];
@@ -240,7 +239,7 @@
     if (self.blurEnabled && !self.updating && self.updatesEnabled > 0 && [self.views count])
     {
         NSTimeInterval timeUntilNextUpdate = 1.0 / 60;
-        
+
         //loop through until we find a view that's ready to be drawn
         self.viewIndex = self.viewIndex % [self.views count];
         for (NSUInteger i = self.viewIndex; i < [self.views count]; i++)
@@ -253,7 +252,7 @@
                 {
                     self.updating = YES;
                     [view updateAsynchronously:YES completion:^{
-                        
+
                         //render next view
                         self.updating = NO;
                         self.viewIndex = i + 1;
@@ -310,7 +309,7 @@
     if (!_blurEnabledSet) _blurEnabled = YES;
     self.updateInterval = _updateInterval;
     self.layer.magnificationFilter = @"linear"; // kCAFilterLinear
-    
+
     unsigned int numberOfMethods;
     Method *methods = class_copyMethodList([UIView class], &numberOfMethods);
     for (unsigned int i = 0; i < numberOfMethods; i++)
@@ -462,7 +461,7 @@
 - (BOOL)shouldUpdate
 {
     __strong CALayer *underlyingLayer = [self underlyingLayer];
-    
+
     return
     underlyingLayer && !underlyingLayer.hidden &&
     self.blurEnabled && [FXBlurScheduler sharedInstance].blurEnabled &&
@@ -499,7 +498,7 @@
     __strong FXBlurLayer *blurLayer = [self blurPresentationLayer];
     __strong CALayer *underlyingLayer = [self underlyingLayer];
     CGRect bounds = [blurLayer convertRect:blurLayer.bounds toLayer:underlyingLayer];
-    
+
     self.lastUpdate = [NSDate date];
     CGFloat scale = 0.5;
     if (self.iterations)
@@ -526,7 +525,7 @@
     UIGraphicsBeginImageContextWithOptions(size, YES, scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextTranslateCTM(context, -bounds.origin.x, -bounds.origin.y);
-    
+
     NSArray *hiddenViews = [self prepareUnderlyingViewForSnapshot];
     [underlyingLayer renderInContext:context];
     [self restoreSuperviewAfterSnapshot:hiddenViews];
@@ -589,10 +588,10 @@
         if (async)
         {
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-                
+
                 UIImage *blurredImage = [self blurredSnapshot:snapshot radius:self.blurRadius];
                 dispatch_sync(dispatch_get_main_queue(), ^{
-                    
+
                     [self setLayerContents:blurredImage];
                     if (completion) completion();
                 });
